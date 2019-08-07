@@ -42,6 +42,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/config"
 	containerdisk "kubevirt.io/kubevirt/pkg/container-disk"
 	"kubevirt.io/kubevirt/pkg/hooks"
+	"kubevirt.io/kubevirt/pkg/util"
 	"kubevirt.io/kubevirt/pkg/util/hardware"
 	"kubevirt.io/kubevirt/pkg/util/net/dns"
 	"kubevirt.io/kubevirt/pkg/util/types"
@@ -351,7 +352,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 		MountPath: "/var/run/libvirt",
 	})
 
-	if isSRIOVVmi(vmi) {
+	if isSRIOVVmi(vmi) || util.IsNvidiaGpuVmi(vmi) {
 		// libvirt needs this volume to access PCI device config;
 		// note that the volume should not be read-only because libvirt
 		// opens the config for writing
@@ -368,7 +369,6 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			},
 		})
 	}
-
 	serviceAccountName := ""
 
 	for _, volume := range vmi.Spec.Volumes {
@@ -930,7 +930,7 @@ func getRequiredCapabilities(vmi *v1.VirtualMachineInstance) []k8sv1.Capability 
 	// add a CAP_SYS_NICE capability to allow setting cpu affinity
 	res = append(res, CAP_SYS_NICE)
 
-	if isSRIOVVmi(vmi) {
+	if isSRIOVVmi(vmi) || util.IsNvidiaGpuVmi(vmi) {
 		// this capability is needed for libvirt to be able to change ulimits for device passthrough:
 		// "error : cannot limit locked memory to 2098200576: Operation not permitted"
 		res = append(res, CAP_SYS_RESOURCE)
