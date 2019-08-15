@@ -1449,7 +1449,7 @@ func createHostDevForGpu(c *ConverterContext) ([]HostDevice, error) {
 	gpuPciAddresses := append([]string{}, c.GpuDevices...)
 	_, isVgpu := os.LookupEnv("IS-VGPU")
 	if isVgpu {
-		hostDevices, parseErr = createVGpuHostDevicesFromPCIAddresses(gpuPciAddresses)
+		hostDevices, parseErr = createHostDevicesFromMdevUuidList(gpuPciAddresses)
 	} else {
 		hostDevices, parseErr = createHostDevicesFromPCIAddresses(gpuPciAddresses)
 	}
@@ -1483,11 +1483,11 @@ func createHostDevicesFromPCIAddresses(pcis []string) ([]HostDevice, error) {
 	return hds, nil
 }
 
-func createVGpuHostDevicesFromPCIAddresses(pcis []string) ([]HostDevice, error) {
+func createHostDevicesFromMdevUuidList(mdevUuidList []string) ([]HostDevice, error) {
 	var hds []HostDevice
-	for _, pciAddr := range pcis {
+	for _, mdevUuid := range mdevUuidList {
 		decoratedAddrField := &Address{
-			Uuid: pciAddr,
+			Uuid: mdevUuid,
 		}
 
 		hostDev := HostDevice{
