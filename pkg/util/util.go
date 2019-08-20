@@ -15,7 +15,6 @@ const ExtensionAPIServerAuthenticationConfigMap = "extension-apiserver-authentic
 const RequestHeaderClientCAFileKey = "requestheader-client-ca-file"
 const VirtShareDir = "/var/run/kubevirt"
 const VirtLibDir = "/var/lib/kubevirt"
-const GpuDevice = "nvidia.com/"
 
 func GetNamespace() (string, error) {
 	if data, err := ioutil.ReadFile(ServiceAccountNamespaceFile); err == nil {
@@ -28,17 +27,10 @@ func GetNamespace() (string, error) {
 	return namespaceKubevirt, nil
 }
 
-func IsNvidiaGpuVmi(vmi *v1.VirtualMachineInstance) bool {
-	for key := range vmi.Spec.Domain.Resources.Requests {
-		if strings.HasPrefix(string(key), GpuDevice) {
-			return true
-		}
-	}
-
-	for key := range vmi.Spec.Domain.Resources.Limits {
-		if strings.HasPrefix(string(key), GpuDevice) {
-			return true
-		}
+// Check if a VMI spec requests GPU
+func IsGpuVmi(vmi *v1.VirtualMachineInstance) bool {
+	if vmi.Spec.Domain.Devices.Gpus != nil {
+		return true
 	}
 	return false
 }
