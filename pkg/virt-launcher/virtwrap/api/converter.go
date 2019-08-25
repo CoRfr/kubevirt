@@ -41,6 +41,7 @@ import (
 	containerdisk "kubevirt.io/kubevirt/pkg/container-disk"
 	"kubevirt.io/kubevirt/pkg/emptydisk"
 	ephemeraldisk "kubevirt.io/kubevirt/pkg/ephemeral-disk"
+	cmdv1 "kubevirt.io/kubevirt/pkg/handler-launcher-com/cmd/v1"
 	hostdisk "kubevirt.io/kubevirt/pkg/host-disk"
 	"kubevirt.io/kubevirt/pkg/ignition"
 	"kubevirt.io/kubevirt/pkg/util"
@@ -64,6 +65,7 @@ type ConverterContext struct {
 	IsBlockPVC     map[string]bool
 	DiskType       map[string]*containerdisk.DiskInfo
 	SRIOVDevices   map[string][]string
+  SMBios         *cmdv1.SMBios
 	GpuDevices     []string
 	VgpuDevices    []string
 }
@@ -686,6 +688,60 @@ func Convert_v1_VirtualMachine_To_api_Domain(vmi *v1.VirtualMachineInstance, dom
 
 		if len(vmi.Spec.Domain.Firmware.Serial) > 0 {
 			domain.Spec.SysInfo.System = append(domain.Spec.SysInfo.System, Entry{Name: "serial", Value: string(vmi.Spec.Domain.Firmware.Serial)})
+		}
+	}
+	if c.SMBios != nil {
+		domain.Spec.SysInfo.System = append(domain.Spec.SysInfo.System,
+			Entry{
+				Name:  "manufacturer",
+				Value: c.SMBios.Manufacturer,
+			},
+			Entry{
+				Name:  "family",
+				Value: c.SMBios.Family,
+			},
+			Entry{
+				Name:  "product",
+				Value: c.SMBios.Product,
+			},
+			Entry{
+				Name:  "sku",
+				Value: c.SMBios.Sku,
+			},
+			Entry{
+				Name:  "version",
+				Value: c.SMBios.Version,
+			},
+		)
+	}
+
+	// Take SMBios values from the VirtualMachineOptions
+	domain.Spec.OS.SMBios = &SMBios{
+		Mode: "sysinfo",
+	}
+
+	if vmi.Spec.Domain.Chassis != nil {
+		domain.Spec.SysInfo.Chassis = []Entry{
+			{
+				Name:  "manufacturer",
+				Value: string(vmi.Spec.Domain.Chassis.Manufacturer),
+			},
+			{
+				Name:  "version",
+				Value: string(vmi.Spec.Domain.Chassis.Version),
+			},
+			{
+				Name:  "serial",
+				Value: string(vmi.Spec.Domain.Chassis.Serial),
+			},
+			{
+				Name:  "asset",
+				Value: string(vmi.Spec.Domain.Chassis.Asset),
+			},
+			{
+				Name:  "sku",
+				Value: string(vmi.Spec.Domain.Chassis.Sku),
+			},
 		}
 	}
 
