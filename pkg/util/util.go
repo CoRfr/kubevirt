@@ -13,6 +13,15 @@ const VirtLibDir = "/var/lib/kubevirt"
 func IsGpuVmi(vmi *v1.VirtualMachineInstance) bool {
 	if vmi.Spec.Domain.Devices.Gpus != nil {
 		return true
+    	}
+	return false
+}
+
+func IsSRIOVVmi(vmi *v1.VirtualMachineInstance) bool {
+	for _, iface := range vmi.Spec.Domain.Devices.Interfaces {
+		if iface.SRIOV != nil {
+			return true
+		}
 	}
 	return false
 }

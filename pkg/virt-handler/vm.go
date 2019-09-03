@@ -1249,18 +1249,13 @@ func (d *VirtualMachineController) checkVolumesForMigration(vmi *v1.VirtualMachi
 			} else if err != nil {
 				return blockMigrate, err
 			}
-			blockMigrate = blockMigrate || !shared
 			if !shared {
-				return blockMigrate, fmt.Errorf("cannot migrate VMI with non-shared PVCs")
+				return true, fmt.Errorf("cannot migrate VMI with non-shared PVCs")
 			}
 		} else if volSrc.HostDisk != nil {
-			shared := false
-			if volSrc.HostDisk.Shared != nil {
-				shared = *volSrc.HostDisk.Shared
-			}
-			blockMigrate = blockMigrate || !shared
+			shared := volSrc.HostDisk.Shared != nil && *volSrc.HostDisk.Shared
 			if !shared {
-				return blockMigrate, fmt.Errorf("cannot migrate VMI with non-shared HostDisk")
+				return true, fmt.Errorf("cannot migrate VMI with non-shared HostDisk")
 			}
 		} else {
 			blockMigrate = true
@@ -1412,6 +1407,11 @@ func (d *VirtualMachineController) processVmUpdate(origVMI *v1.VirtualMachineIns
 			if err := d.containerDiskMounter.Mount(vmi, true); err != nil {
 				return err
 			}
+		}
+
+		err = d.podIsolationDetector.AdjustResources(vmi)
+		if err != nil {
+			return fmt.Errorf("failed to adjust resources: %v", err)
 		}
 
 		options := &cmdv1.VirtualMachineOptions{

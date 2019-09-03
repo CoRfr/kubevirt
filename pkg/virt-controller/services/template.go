@@ -61,7 +61,6 @@ const GenieNetworksAnnotation = "cni"
 
 const CAP_NET_ADMIN = "NET_ADMIN"
 const CAP_SYS_NICE = "SYS_NICE"
-const CAP_SYS_RESOURCE = "SYS_RESOURCE"
 
 // LibvirtStartupDelay is added to custom liveness and readiness probes initial delay value.
 // Libvirt needs roughly 10 seconds to start.
@@ -98,15 +97,6 @@ type templateService struct {
 }
 
 type PvcNotFoundError error
-
-func isSRIOVVmi(vmi *v1.VirtualMachineInstance) bool {
-	for _, iface := range vmi.Spec.Domain.Devices.Interfaces {
-		if iface.SRIOV != nil {
-			return true
-		}
-	}
-	return false
-}
 
 func isFeatureStateEnabled(fs *v1.FeatureState) bool {
 	return fs != nil && fs.Enabled != nil && *fs.Enabled
@@ -356,7 +346,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 		MountPath: "/var/run/libvirt",
 	})
 
-	if isSRIOVVmi(vmi) || util.IsGpuVmi(vmi) {
+	if util.IsSRIOVVmi(vmi) || util.IsGpuVmi(vmi) {
 		// libvirt needs this volume to access PCI device config;
 		// note that the volume should not be read-only because libvirt
 		// opens the config for writing
@@ -847,7 +837,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			Resources: k8sv1.ResourceRequirements{
 				Limits: map[k8sv1.ResourceName]resource.Quantity{
 					k8sv1.ResourceCPU:    resource.MustParse("1m"),
-					k8sv1.ResourceMemory: resource.MustParse("5Mi"),
+					k8sv1.ResourceMemory: resource.MustParse("12Mi"), // this is the minimum memory limit for cri-o!
 				},
 			},
 			Command:        []string{"/usr/bin/tail", "-f", "/dev/null"},
@@ -951,12 +941,6 @@ func getRequiredCapabilities(vmi *v1.VirtualMachineInstance) []k8sv1.Capability 
 	}
 	// add a CAP_SYS_NICE capability to allow setting cpu affinity
 	res = append(res, CAP_SYS_NICE)
-
-	if isSRIOVVmi(vmi) || util.IsGpuVmi(vmi) {
-		// this capability is needed for libvirt to be able to change ulimits for device passthrough:
-		// "error : cannot limit locked memory to 2098200576: Operation not permitted"
-		res = append(res, CAP_SYS_RESOURCE)
-	}
 	return res
 }
 
@@ -1079,7 +1063,7 @@ func getNamespaceAndNetworkName(vmi *v1.VirtualMachineInstance, fullNetworkName 
 		namespace = precond.MustNotBeEmpty(vmi.GetObjectMeta().GetNamespace())
 		networkName = fullNetworkName
 	}
-	return
+	return/
 }
 
 func getNetworkToResourceMap(virtClient kubecli.KubevirtClient, vmi *v1.VirtualMachineInstance) (networkToResourceMap map[string]string, err error) {
