@@ -564,7 +564,7 @@ var _ = Describe("Converter", func() {
 				UseEmulation: true,
 				IsBlockPVC:   isBlockPVCMap,
 				SRIOVDevices: map[string][]string{},
-        SMBios:       TestSmbios,
+				SMBios:       TestSmbios,
 				GpuDevices:   []string{},
 			}
 		})

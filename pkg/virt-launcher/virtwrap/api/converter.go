@@ -65,7 +65,7 @@ type ConverterContext struct {
 	IsBlockPVC     map[string]bool
 	DiskType       map[string]*containerdisk.DiskInfo
 	SRIOVDevices   map[string][]string
-  SMBios         *cmdv1.SMBios
+	SMBios         *cmdv1.SMBios
 	GpuDevices     []string
 	VgpuDevices    []string
 }

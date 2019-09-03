@@ -1063,7 +1063,7 @@ func getNamespaceAndNetworkName(vmi *v1.VirtualMachineInstance, fullNetworkName 
 		namespace = precond.MustNotBeEmpty(vmi.GetObjectMeta().GetNamespace())
 		networkName = fullNetworkName
 	}
-	return/
+	return
 }
 
 func getNetworkToResourceMap(virtClient kubecli.KubevirtClient, vmi *v1.VirtualMachineInstance) (networkToResourceMap map[string]string, err error) {
