@@ -871,6 +871,19 @@ func IsOpenShift() bool {
 	return isOpenShift
 }
 
+func ServiceMonitorEnabled() bool {
+	virtClient, err := kubecli.GetKubevirtClient()
+	PanicOnError(err)
+
+	serviceMonitorEnabled, err := util.IsServiceMonitorEnabled(virtClient)
+	if err != nil {
+		fmt.Printf("ERROR: Can't verify ServiceMonitor CRD %v\n", err)
+		panic(err)
+	}
+
+	return serviceMonitorEnabled
+}
+
 func composeResourceURI(object unstructured.Unstructured) string {
 	uri := "/api"
 	if object.GetAPIVersion() != "v1" {
@@ -1454,14 +1467,7 @@ func NewRandomVirtualMachineInstanceWithOCSDisk(imageUrl, namespace string, acce
 	_, err = virtCli.CdiClient().CdiV1alpha1().DataVolumes(dv.Namespace).Create(dv)
 	Expect(err).ToNot(HaveOccurred())
 	WaitForSuccessfulDataVolumeImport(dv, 240)
-
-	switch volMode {
-	case k8sv1.PersistentVolumeBlock:
-		// workaround for: https://github.com/kubevirt/kubevirt/issues/2438
-		return NewRandomVMIWithPVC(dv.Name), dv
-	default:
-		return NewRandomVMIWithDataVolume(dv.Name), dv
-	}
+	return NewRandomVMIWithDataVolume(dv.Name), dv
 }
 
 func newRandomDataVolumeWithHttpImport(imageUrl, namespace, storageClass string, accessMode k8sv1.PersistentVolumeAccessMode) *cdiv1.DataVolume {
@@ -2236,14 +2242,14 @@ func waitForVMIPhase(phases []v1.VirtualMachineInstancePhase, obj runtime.Object
 		}()
 	}
 
-	timeoutMsg := fmt.Sprintf("Timed out waiting for VMI to enter %s phase(s)", phases)
+	timeoutMsg := fmt.Sprintf("Timed out waiting for VMI %s to enter %s phase(s)", vmi.Name, phases)
 	// FIXME the event order is wrong. First the document should be updated
 	EventuallyWithOffset(1, func() v1.VirtualMachineInstancePhase {
 		vmi, err = virtClient.VirtualMachineInstance(vmi.Namespace).Get(vmi.Name, &metav1.GetOptions{})
 		ExpectWithOffset(1, err).ToNot(HaveOccurred())
 
 		nodeName = vmi.Status.NodeName
-		Expect(vmi.IsFinal()).To(BeFalse(), "VMI unexpectedly stopped. State: %s", vmi.Status.Phase)
+		Expect(vmi.IsFinal()).To(BeFalse(), "VMI %s unexpectedly stopped. State: %s", vmi.Name, vmi.Status.Phase)
 		return vmi.Status.Phase
 	}, time.Duration(seconds)*time.Second, 1*time.Second).Should(BeElementOf(phases), timeoutMsg)
 
@@ -3870,14 +3876,18 @@ func GenerateHelloWorldServer(vmi *v1.VirtualMachineInstance, testPort int, prot
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func UpdateClusterConfigValue(key string, value string) {
+// UpdateClusterConfigValueAndWait updates the given configuration in the kubevirt config map and then waits
+// to allow the configuration events to be propagated to the consumers.
+func UpdateClusterConfigValueAndWait(key string, value string) {
 	virtClient, err := kubecli.GetKubevirtClient()
 	PanicOnError(err)
 	cfgMap, err := virtClient.CoreV1().ConfigMaps(KubeVirtInstallNamespace).Get(kubevirtConfig, metav1.GetOptions{})
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	cfgMap.Data[key] = value
 	_, err = virtClient.CoreV1().ConfigMaps(KubeVirtInstallNamespace).Update(cfgMap)
-	Expect(err).ToNot(HaveOccurred())
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+
+	time.Sleep(2 * time.Second)
 }
 
 func WaitAgentConnected(virtClient kubecli.KubevirtClient, vmi *v1.VirtualMachineInstance) {
