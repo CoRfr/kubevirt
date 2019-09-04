@@ -47,6 +47,15 @@ var _ = Describe("selinux", func() {
 			Expect(err).To(BeNil())
 			Expect(present).To(BeFalse())
 		})
+		It("should detect that it is disabled if getenforce returns Permissive", func() {
+			touch(filepath.Join(tempDir, "/usr/bin", "getenforce"))
+			selinux.execFunc = func(binary string, args ...string) (bytes []byte, e error) {
+				return []byte("Permissive"), nil
+			}
+			present, err := selinux.IsPresent()
+			Expect(err).To(BeNil())
+			Expect(present).To(BeFalse())
+		})
 		It("should detect that it is enabled if getenforce does not return Disabled", func() {
 			touch(filepath.Join(tempDir, "/usr/bin", "getenforce"))
 			selinux.execFunc = func(binary string, args ...string) (bytes []byte, e error) {

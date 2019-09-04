@@ -50,7 +50,7 @@ func (se *SELinuxImpl) IsPresent() (present bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	if strings.Contains(string(out), "Disabled") {
+	if strings.Contains(string(out), "Disabled") || strings.Contains(string(out), "Permissive") {
 		return false, nil
 	}
 	return true, nil
