@@ -69,6 +69,7 @@ type ConverterContext struct {
 	SMBios         *cmdv1.SMBios
 	GpuDevices     []string
 	VgpuDevices    []string
+	PciDevices     []string
 }
 
 func Convert_v1_Disk_To_api_Disk(diskDevice *v1.Disk, disk *Disk, devicePerBus map[string]int, numQueues *uint) error {
@@ -998,6 +999,17 @@ func Convert_v1_VirtualMachine_To_api_Domain(vmi *v1.VirtualMachineInstance, dom
 		}
 		gpuPciAddresses := append([]string{}, c.GpuDevices...)
 		hostDevices, err = createHostDevicesFromPCIAddresses(gpuPciAddresses)
+		if err != nil {
+			log.Log.Reason(err).Error("Unable to parse pci addresses")
+		} else {
+			domain.Spec.Devices.HostDevices = append(domain.Spec.Devices.HostDevices, hostDevices...)
+		}
+	}
+
+	// Append HostDevices to DomXML if PCI is requested
+	if util.IsPciVmi(vmi) {
+		pciAddresses := append([]string{}, c.PciDevices...)
+		hostDevices, err = createHostDevicesFromPCIAddresses(pciAddresses)
 		if err != nil {
 			log.Log.Reason(err).Error("Unable to parse pci addresses")
 		} else {

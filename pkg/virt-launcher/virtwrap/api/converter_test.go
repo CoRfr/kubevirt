@@ -587,6 +587,7 @@ var _ = Describe("Converter", func() {
 				SRIOVDevices: map[string][]string{},
 				SMBios:       TestSmbios,
 				GpuDevices:   []string{},
+				PciDevices:   []string{},
 			}
 		})
 
